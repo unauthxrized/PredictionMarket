@@ -96,27 +96,6 @@ contract PredictionMarket is ReentrancyGuard {
         betInfo.position = Position.Bear;
     }
 
-    function endEpoch() external onlyOperator {
-        uint256 btcCost = _getCost();
-
-        Round storage currentRound = _idToRound[_currentEpoch];
-
-        currentRound.isEnd = true;
-        currentRound.btcCostOnEnd = btcCost;
-        currentRound.winner = _getWinner(currentRound.btcCostOnStart, btcCost);
-        if (currentRound.winner == Position.Bear) {
-            currentRound.lose = Position.Bull;
-        }
-        if (currentRound.winner == Position.Bull) {
-            currentRound.lose = Position.Bear;
-        }
-        _currentEpoch++;
-
-        Round storage nextRound = _idToRound[_currentEpoch];
-        require(nextRound.betsForBear > 0 && nextRound.betsForBull > 0);
-        nextRound.btcCostOnStart = btcCost;
-    }
-
     function getReward(uint _round) external notContract nonReentrant {
         Round storage currentRound = _idToRound[_round];
         require(currentRound.isEnd == true, "Round is not over");
@@ -167,6 +146,29 @@ contract PredictionMarket is ReentrancyGuard {
 
     function addWhitelist(address _user) external onlyAdmin {
         _whitelist[_user] = true;
+    }
+
+    // OPERATOR
+
+    function endEpoch() external onlyOperator {
+        uint256 btcCost = _getCost();
+
+        Round storage currentRound = _idToRound[_currentEpoch];
+
+        currentRound.isEnd = true;
+        currentRound.btcCostOnEnd = btcCost;
+        currentRound.winner = _getWinner(currentRound.btcCostOnStart, btcCost);
+        if (currentRound.winner == Position.Bear) {
+            currentRound.lose = Position.Bull;
+        }
+        if (currentRound.winner == Position.Bull) {
+            currentRound.lose = Position.Bear;
+        }
+        _currentEpoch++;
+
+        Round storage nextRound = _idToRound[_currentEpoch];
+        require(nextRound.betsForBear > 0 && nextRound.betsForBull > 0);
+        nextRound.btcCostOnStart = btcCost;
     }
 
     // GETTERS
@@ -241,6 +243,7 @@ contract PredictionMarket is ReentrancyGuard {
     }
 
     // PRIVATE
+
     function _getCost() private view returns (uint256) {
         (, int256 btcCost, , , ) = _ORACLE.latestRoundData();
         return SafeCast.toUint256(btcCost);
@@ -270,7 +273,7 @@ contract PredictionMarket is ReentrancyGuard {
         return _userValue + (_loseBets * _userValue) / _winBets;
     }
 
-    function _isContract(address account) internal view returns (bool) {
+    function _isContract(address account) private view returns (bool) {
         uint256 size;
         assembly {
             size := extcodesize(account)
